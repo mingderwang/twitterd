@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/k0kubun/twitter"
-	"github.com/k0kubun/userstream"
+	"github.com/mingderwang/userstream"
 	"os"
 )
 
