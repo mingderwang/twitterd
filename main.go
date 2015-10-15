@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	//"github.com/davecgh/go-spew/spew"
 	"github.com/k0kubun/twitter"
 	"github.com/mingderwang/userstream"
 	"os"
@@ -49,6 +50,9 @@ func main() {
 			listMemberRemoved := event.(*userstream.ListMemberRemoved)
 			fmt.Printf("[list_member_removed] %s (%s)\n",
 				listMemberRemoved.TargetObject.FullName, listMemberRemoved.TargetObject.Description)
+		case *userstream.Record:
+			directMessage := event.(*userstream.Record)
+			fmt.Printf("%s : %s\n", directMessage.DirectMessage.Sender.ScreenName, directMessage.DirectMessage.Text)
 		}
 	})
 }
