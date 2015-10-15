@@ -7,6 +7,7 @@ import (
 	"github.com/mingderwang/userstream"
 	"github.com/parnurzeal/gorequest"
 	"os"
+	"strconv"
 )
 
 func main() {
@@ -58,14 +59,18 @@ func main() {
 	})
 }
 
+func stringify(jsonString string) string {
+	str := strconv.Quote(jsonString)
+	return str
+}
+
 func sendRequest(userName string, jsonSchema string) {
 	fmt.Printf("%s : %s\n", userName, jsonSchema)
 	request := gorequest.New()
-	str := `{"domainName":"ming","typeName":"gcoin","jsonSchema":"{\"age\":3}"}`
-	//	fmt.Println(str)
+	str := `{"domainName":"` + userName + `","typeName":"ggcoin","jsonSchema":` + stringify(jsonSchema) + `}`
 	resp, _, _ := request.Post("http://log4security.com:8080/onion").
 		Set("Content-Type", "application/json").
 		Send(str).
 		End()
-	spew.Dump(resp)
+	//spew.Dump(resp)
 }
