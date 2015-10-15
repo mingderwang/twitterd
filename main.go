@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	//"github.com/davecgh/go-spew/spew"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/k0kubun/twitter"
 	"github.com/mingderwang/userstream"
+	"github.com/parnurzeal/gorequest"
 	"os"
 )
 
@@ -52,7 +53,19 @@ func main() {
 				listMemberRemoved.TargetObject.FullName, listMemberRemoved.TargetObject.Description)
 		case *userstream.Record:
 			directMessage := event.(*userstream.Record)
-			fmt.Printf("%s : %s\n", directMessage.DirectMessage.Sender.ScreenName, directMessage.DirectMessage.Text)
+			sendRequest(directMessage.DirectMessage.Sender.ScreenName, directMessage.DirectMessage.Text)
 		}
 	})
+}
+
+func sendRequest(userName string, jsonSchema string) {
+	fmt.Printf("%s : %s\n", userName, jsonSchema)
+	request := gorequest.New()
+	str := `{"domainName":"ming","typeName":"gcoin","jsonSchema":"{\"age\":3}"}`
+	//	fmt.Println(str)
+	resp, _, _ := request.Post("http://log4security.com:8080/onion").
+		Set("Content-Type", "application/json").
+		Send(str).
+		End()
+	spew.Dump(resp)
 }
