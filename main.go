@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
+	//	"github.com/davecgh/go-spew/spew"
 	"github.com/k0kubun/twitter"
 	"github.com/mingderwang/userstream"
 	"github.com/parnurzeal/gorequest"
 	"os"
 	"strconv"
+	"strings"
 )
 
 func main() {
@@ -59,18 +60,28 @@ func main() {
 	})
 }
 
-func stringify(jsonString string) string {
-	str := strconv.Quote(jsonString)
-	return str
+func stringify(data string) (tag string, schema string) {
+	jsonString := strings.SplitN(data, ":", 2)
+	//	spew.Dump(jsonString)
+	if len(jsonString) == 2 {
+		str := strconv.Quote(jsonString[1])
+		return jsonString[0], str
+	} else {
+		return "", ""
+	}
 }
 
-func sendRequest(userName string, jsonSchema string) {
-	fmt.Printf("%s : %s\n", userName, jsonSchema)
+func sendRequest(userName string, jsonSchemaWithTag string) {
 	request := gorequest.New()
-	str := `{"domainName":"` + userName + `","typeName":"ggcoin","jsonSchema":` + stringify(jsonSchema) + `}`
-	resp, _, _ := request.Post("http://log4security.com:8080/onion").
-		Set("Content-Type", "application/json").
-		Send(str).
-		End()
-	//spew.Dump(resp)
+	if tag, schema := stringify(jsonSchemaWithTag); tag == "" && schema == "" {
+		fmt.Println("error")
+	} else {
+		str := `{"domainName":"` + userName + `","typeName":` + tag + `,"jsonSchema":` + schema + `}`
+		fmt.Printf("%s", str)
+		resp, _, _ := request.Post("http://log4security.com:8080/onion").
+			Set("Content-Type", "application/json").
+			Send(str).
+			End()
+		//		spew.Dump(resp)
+	}
 }
