@@ -13,6 +13,10 @@ import (
 	"strings"
 )
 
+type Result struct {
+	EndpointURL string `json:"endpointURL"`
+}
+
 type Onion struct {
 	Ginger_Created int32 `json:"ginger_created"`
 	Ginger_Id      int32 `json:"ginger_id" gorm:"primary_key"`
@@ -21,6 +25,8 @@ type Onion struct {
 	TypeName   string `json:"typeName"`
 	JsonSchema string `json:"jsonSchema"`
 }
+
+const baseURL string = "http://log4security.com:8080/onion"
 
 func main() {
 	var CONSUMER_KEY = os.Getenv("CONSUMER_KEY")
@@ -89,23 +95,35 @@ func sendRequest(userName string, jsonSchemaWithTag string) {
 	} else {
 		str := `{"domainName":"` + userName + `","typeName":` + tag + `,"jsonSchema":` + schema + `}`
 		fmt.Printf("%s", str)
-		resp, body, err := request.Post("http://log4security.com:8080/onion").
+		resp, _, err := request.Post(baseURL).
 			Set("Content-Type", "application/json").
 			Send(str).End()
 		if err != nil {
 			panic(err)
 		}
-		spew.Dump(body)
-		spew.Dump(resp)
+		//	spew.Dump(body)
+		//	spew.Dump(resp)
 		target := Onion{}
 		processResponser(resp, &target)
 		spew.Dump(target.Ginger_Id)
-		sendRequestByIdForBuild(string(target.Ginger_Id))
+		var s string = strconv.Itoa(int(target.Ginger_Id))
+		sendRequestByIdForBuild(s)
 	}
 }
 
 func sendRequestByIdForBuild(idString string) {
+	target := Result{}
+	url := fmt.Sprintf("%s/%s/build", baseURL, idString)
+	fmt.Println(url)
+	request := gorequest.New()
+	resp, _, _ := request.Get(url).End(printStatus)
+	spew.Dump(resp.Body)
+	json.NewDecoder(resp.Body).Decode(&target)
+	spew.Dump(target)
+}
 
+func printStatus(resp gorequest.Response, body string, errs []error) {
+	fmt.Println(resp.Status)
 }
 
 func processResponser(response *http.Response, target *Onion) {
