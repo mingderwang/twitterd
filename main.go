@@ -1,15 +1,26 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	//	"github.com/davecgh/go-spew/spew"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/k0kubun/twitter"
 	"github.com/mingderwang/userstream"
 	"github.com/parnurzeal/gorequest"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
 )
+
+type Onion struct {
+	Ginger_Created int32 `json:"ginger_created"`
+	Ginger_Id      int32 `json:"ginger_id" gorm:"primary_key"`
+
+	DomainName string `json:"domainName"`
+	TypeName   string `json:"typeName"`
+	JsonSchema string `json:"jsonSchema"`
+}
 
 func main() {
 	var CONSUMER_KEY = os.Getenv("CONSUMER_KEY")
@@ -78,10 +89,35 @@ func sendRequest(userName string, jsonSchemaWithTag string) {
 	} else {
 		str := `{"domainName":"` + userName + `","typeName":` + tag + `,"jsonSchema":` + schema + `}`
 		fmt.Printf("%s", str)
-		resp, _, _ := request.Post("http://log4security.com:8080/onion").
+		resp, body, err := request.Post("http://log4security.com:8080/onion").
 			Set("Content-Type", "application/json").
-			Send(str).
-			End()
-		//		spew.Dump(resp)
+			Send(str).End()
+		if err != nil {
+			panic(err)
+		}
+		spew.Dump(body)
+		spew.Dump(resp)
+		target := Onion{}
+		processResponser(resp, &target)
+		spew.Dump(target.Ginger_Id)
+		sendRequestByIdForBuild(string(target.Ginger_Id))
 	}
+}
+
+func sendRequestByIdForBuild(idString string) {
+
+}
+
+func processResponser(response *http.Response, target *Onion) {
+	json.NewDecoder(response.Body).Decode(&target)
+}
+
+func getJson(url string, target interface{}) error {
+	r, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+
+	return json.NewDecoder(r.Body).Decode(target)
 }
