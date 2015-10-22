@@ -104,6 +104,7 @@ func sendRequest(userName string, id int, jsonSchemaWithTag string) {
 			Set("Content-Type", "application/json").
 			Send(str).End()
 		if err != nil {
+			spew.Dump(err)
 			panic(err)
 		}
 		//	spew.Dump(body)
