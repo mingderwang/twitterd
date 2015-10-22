@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ChimeraCoder/anaconda"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/k0kubun/twitter"
 	"github.com/mingderwang/userstream"
@@ -26,13 +27,16 @@ type Onion struct {
 	JsonSchema string `json:"jsonSchema"`
 }
 
-const baseURL string = "http://log4security.com:8080/onion"
+var (
+	baseURL = "http://log4security.com:8080/onion"
+)
+
+var CONSUMER_KEY = os.Getenv("CONSUMER_KEY")
+var CONSUMER_SECRET = os.Getenv("CONSUMER_SECRET")
+var ACCESS_TOKEN = os.Getenv("ACCESS_TOKEN")
+var ACCESS_TOKEN_SECRET = os.Getenv("ACCESS_TOKEN_SECRET")
 
 func main() {
-	var CONSUMER_KEY = os.Getenv("CONSUMER_KEY")
-	var CONSUMER_SECRET = os.Getenv("CONSUMER_SECRET")
-	var ACCESS_TOKEN = os.Getenv("ACCESS_TOKEN")
-	var ACCESS_TOKEN_SECRET = os.Getenv("ACCESS_TOKEN_SECRET")
 	client := &userstream.Client{
 		ConsumerKey:       CONSUMER_KEY,
 		ConsumerSecret:    CONSUMER_SECRET,
@@ -72,7 +76,8 @@ func main() {
 				listMemberRemoved.TargetObject.FullName, listMemberRemoved.TargetObject.Description)
 		case *userstream.Record:
 			directMessage := event.(*userstream.Record)
-			sendRequest(directMessage.DirectMessage.Sender.ScreenName, directMessage.DirectMessage.Text)
+			spew.Dump(directMessage.DirectMessage.Sender.ID)
+			sendRequest(directMessage.DirectMessage.Sender.ScreenName, directMessage.DirectMessage.Sender.ID, directMessage.DirectMessage.Text)
 		}
 	})
 }
@@ -88,7 +93,7 @@ func stringify(data string) (tag string, schema string) {
 	}
 }
 
-func sendRequest(userName string, jsonSchemaWithTag string) {
+func sendRequest(userName string, id int, jsonSchemaWithTag string) {
 	request := gorequest.New()
 	if tag, schema := stringify(jsonSchemaWithTag); tag == "" && schema == "" {
 		fmt.Println("error")
@@ -107,11 +112,11 @@ func sendRequest(userName string, jsonSchemaWithTag string) {
 		processResponser(resp, &target)
 		spew.Dump(target.Ginger_Id)
 		var s string = strconv.Itoa(int(target.Ginger_Id))
-		sendRequestByIdForBuild(s)
+		sendRequestByIdForBuild(s, id)
 	}
 }
 
-func sendRequestByIdForBuild(idString string) {
+func sendRequestByIdForBuild(idString string, id int) {
 	target := Result{}
 	url := fmt.Sprintf("%s/%s/build", baseURL, idString)
 	fmt.Println(url)
@@ -120,6 +125,16 @@ func sendRequestByIdForBuild(idString string) {
 	spew.Dump(resp.Body)
 	json.NewDecoder(resp.Body).Decode(&target)
 	spew.Dump(target)
+	callBackUser(id, target.EndpointURL)
+}
+
+func callBackUser(id int, endpoint string) {
+	anaconda.SetConsumerKey(CONSUMER_KEY)
+	anaconda.SetConsumerSecret(CONSUMER_SECRET)
+	api := anaconda.NewTwitterApi(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
+	message, err := api.PostDMToUserId(endpoint, int64(id))
+	spew.Dump(message)
+	spew.Dump(err)
 }
 
 func printStatus(resp gorequest.Response, body string, errs []error) {
