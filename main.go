@@ -8,10 +8,12 @@ import (
 	"github.com/k0kubun/twitter"
 	"github.com/mingderwang/userstream"
 	"github.com/parnurzeal/gorequest"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Result struct {
@@ -26,6 +28,10 @@ type Onion struct {
 	TypeName   string `json:"typeName"`
 	JsonSchema string `json:"jsonSchema"`
 }
+
+const (
+	errorString = "OOPS! format error, correct example:\n {\"user\":{\"name\":\"John\", \"age\":32}}"
+)
 
 var (
 	baseURL = "http://log4security.com:8080/onion"
@@ -76,8 +82,28 @@ func main() {
 				listMemberRemoved.TargetObject.FullName, listMemberRemoved.TargetObject.Description)
 		case *userstream.Record:
 			directMessage := event.(*userstream.Record)
-			spew.Dump(directMessage.DirectMessage.Sender.ID)
-			sendRequest(directMessage.DirectMessage.Sender.ScreenName, directMessage.DirectMessage.Sender.ID, directMessage.DirectMessage.Text)
+			//spew.Dump(directMessage.DirectMessage.Text)
+			str := directMessage.DirectMessage.Text
+			fmt.Println("-------")
+			spew.Dump(str)
+			fmt.Println("-------")
+			if len(str) != 0 {
+				b := []byte(str)
+				var f map[string]interface{}
+				err := json.Unmarshal(b, &f)
+				if err != nil && str != errorString {
+					fmt.Println("-2------")
+					log.Println(err)
+					callBackUser(directMessage.DirectMessage.Sender.ID, "OOPS! format error, correct example:\n {\"user\":{\"name\":\"John\", \"age\":32}}")
+				} else if len(f) == 1 {
+					s2 := str
+					s2 = strings.TrimSuffix(s2, "}")
+					fmt.Println("s2:", s2)
+					s2 = strings.TrimPrefix(s2, "{")
+					fmt.Println("s2:", s2)
+					sendRequest(directMessage.DirectMessage.Sender.ScreenName, directMessage.DirectMessage.Sender.ID, s2)
+				}
+			}
 		}
 	})
 }
@@ -99,21 +125,24 @@ func sendRequest(userName string, id int, jsonSchemaWithTag string) {
 		fmt.Println("error")
 	} else {
 		str := `{"domainName":"` + userName + `","typeName":` + tag + `,"jsonSchema":` + schema + `}`
+
 		fmt.Printf("%s", str)
 		resp, _, err := request.Post(baseURL).
 			Set("Content-Type", "application/json").
 			Send(str).End()
 		if err != nil {
-			spew.Dump(err)
-			panic(err)
+			//spew.Dump(err)
+			callBackUser(id, "JSON syntax error")
+		} else {
+
+			//	spew.Dump(body)
+			//	spew.Dump(resp)
+			target := Onion{}
+			processResponser(resp, &target)
+			spew.Dump(target.Ginger_Id)
+			var s string = strconv.Itoa(int(target.Ginger_Id))
+			sendRequestByIdForBuild(s, id)
 		}
-		//	spew.Dump(body)
-		//	spew.Dump(resp)
-		target := Onion{}
-		processResponser(resp, &target)
-		spew.Dump(target.Ginger_Id)
-		var s string = strconv.Itoa(int(target.Ginger_Id))
-		sendRequestByIdForBuild(s, id)
 	}
 }
 
@@ -123,19 +152,24 @@ func sendRequestByIdForBuild(idString string, id int) {
 	fmt.Println(url)
 	request := gorequest.New()
 	resp, _, _ := request.Get(url).End(printStatus)
-	spew.Dump(resp.Body)
+	//spew.Dump(resp.Body)
 	json.NewDecoder(resp.Body).Decode(&target)
-	spew.Dump(target)
+	//spew.Dump(target)
+	time.Sleep(1000 * time.Millisecond)
 	callBackUser(id, target.EndpointURL)
 }
 
 func callBackUser(id int, endpoint string) {
+	spew.Dump(id)
+	spew.Dump(endpoint)
 	anaconda.SetConsumerKey(CONSUMER_KEY)
 	anaconda.SetConsumerSecret(CONSUMER_SECRET)
 	api := anaconda.NewTwitterApi(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
-	message, err := api.PostDMToUserId(endpoint, int64(id))
-	spew.Dump(message)
-	spew.Dump(err)
+	_, err := api.PostDMToUserId(endpoint, int64(id))
+	//spew.Dump(message)
+	if err != nil {
+		spew.Dump(err)
+	}
 }
 
 func printStatus(resp gorequest.Response, body string, errs []error) {
